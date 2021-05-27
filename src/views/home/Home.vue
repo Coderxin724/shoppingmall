@@ -8,6 +8,13 @@
         </div>
       </template>
     </nav-bar>
+    <tab-control
+      :titles="['流行', '新款', '精选']"
+      class="tab-control"
+      @tabClick="tabClick"
+      ref="tabControl1"
+      v-show="isShowTabControl"
+    ></tab-control>
     <scroll
       class="content"
       ref="scroll"
@@ -17,7 +24,10 @@
       @pullingUp="pullUpLoad"
     >
       <!-- 轮播图 -->
-      <home-swiper :banners="banners"></home-swiper>
+      <home-swiper
+        :banners="banners"
+        @swiperImageLoad="swiperImageLoad"
+      ></home-swiper>
       <!-- 信息展示 -->
       <recommend-view :recommends="recommends"></recommend-view>
       <!-- 本周流行 -->
@@ -27,6 +37,7 @@
         :titles="['流行', '新款', '精选']"
         class="tab-control"
         @tabClick="tabClick"
+        ref="tabControl2"
       ></tab-control>
       <!-- 商品 -->
       <goods-list :goodslist="showGoods"></goods-list>
@@ -47,6 +58,7 @@ import Scroll from "components/common/scroll/Scroll.vue";
 import BackTop from "components/common/backTop/BackTop";
 
 import { getHomeMultiData, getHomeData } from "network/home.js";
+import { debounce } from "common/untils.js";
 export default {
   name: "Home",
   components: {
@@ -70,9 +82,13 @@ export default {
       },
       currentType: "pop",
       isShowTop: false,
-      isLoad: true
+      isLoad: true,
+      tabOffSetTop: 0,
+      isShowTabControl: false,
+      saveY: 0
     };
   },
+  // 生命周期函数
   created() {
     // 1.请求多个数据
     this.getHomeMultiData();
@@ -80,6 +96,27 @@ export default {
     this.getHomeData("pop");
     this.getHomeData("new");
     this.getHomeData("sell");
+  },
+  mounted() {
+    let refresh = debounce(this.$refs.scroll.refresh, 200);
+    this.$bus.$on("itemImageLoad", () => {
+      refresh();
+    });
+  },
+  destroyed() {
+    console.log("destroyed");
+  },
+  activated() {
+    // this.$refs.scroll.scrollTo(0, -1000);
+    // 加时间就会出现返回顶的BUG
+    this.$refs.scroll.scrollTo(0, this.saveY);
+    this.$refs.scroll.scroll.refresh();
+    console.log("activated");
+  },
+  deactivated() {
+    this.saveY = this.$refs.scroll.getScrollY();
+    console.log("deactivated");
+    console.log(this.saveY);
   },
   computed: {
     showGoods() {
@@ -103,6 +140,8 @@ export default {
           this.currentType = "sell";
           break;
       }
+      this.$refs.tabControl1.currentIndex = index;
+      this.$refs.tabControl2.currentIndex = index;
     },
     backTop() {
       console.log("backTop");
@@ -111,9 +150,13 @@ export default {
     scrollTop(position) {
       // console.log(position);
       this.isShowTop = position.y < -1000;
+      this.isShowTabControl = position.y < -this.tabOffSetTop;
     },
     pullUpLoad() {
       this.getHomeData(this.currentType);
+    },
+    swiperImageLoad() {
+      this.tabOffSetTop = this.$refs.tabControl2.$el.offsetTop;
     },
     /**
      * 网络请求数据的方法

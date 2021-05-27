@@ -10,6 +10,8 @@ const Cart = () =>
   import ('views/cart/Cart.vue')
 const Profile = () =>
   import ('views/profile/Profile.vue')
+const Details = () =>
+  import ('views/details/Details.vue')
 
 Vue.use(Router);
 
@@ -32,6 +34,10 @@ const routes = [{
   {
     path: '/profile',
     component: Profile
+  },
+  {
+    path: "/details/:iid",
+    component: Details
   }
 ]
 
