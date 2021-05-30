@@ -99,7 +99,7 @@ export default {
   },
   mounted() {
     let refresh = debounce(this.$refs.scroll.refresh, 200);
-    this.$bus.$on("itemImageLoad", () => {
+    this.$bus.$on("homeItemImageLoad", () => {
       refresh();
     });
   },
@@ -111,12 +111,9 @@ export default {
     // 加时间就会出现返回顶的BUG
     this.$refs.scroll.scrollTo(0, this.saveY);
     this.$refs.scroll.scroll.refresh();
-    console.log("activated");
   },
   deactivated() {
     this.saveY = this.$refs.scroll.getScrollY();
-    console.log("deactivated");
-    console.log(this.saveY);
   },
   computed: {
     showGoods() {

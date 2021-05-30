@@ -41,6 +41,7 @@ export default {
     },
     titleClick(index) {
       this.curretIndex = index;
+      this.$emit("detailTitleClick", index);
     }
   }
 };

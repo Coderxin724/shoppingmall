@@ -1,7 +1,16 @@
 <template>
   <div id="details">
-    <details-bar class="details-nav"></details-bar>
-    <scroll class="content" ref="scroll">
+    <details-bar
+      class="details-nav"
+      @detailTitleClick="detailTitleClick"
+      ref="nav"
+    ></details-bar>
+    <scroll
+      class="content"
+      ref="scroll"
+      @scroll="contentScroll"
+      :probe-type="3"
+    >
       <details-swiper :topImages="topImages"></details-swiper>
       <details-base-info :goods="goods"></details-base-info>
       <details-shop-info :shop="shop"></details-shop-info>
@@ -9,60 +18,18 @@
         :detail-info="detailInfo"
         @imageLoad="imageLoad"
       ></detail-goods-info>
-      <detail-param-info :param-info="paramInfo"></detail-param-info>
-      <ul>
-        <li>详情页1</li>
-        <li>详情页2</li>
-        <li>详情页3</li>
-        <li>详情页4</li>
-        <li>详情页5</li>
-        <li>详情页6</li>
-        <li>详情页7</li>
-        <li>详情页8</li>
-        <li>详情页9</li>
-        <li>详情页10</li>
-        <li>详情页11</li>
-        <li>详情页12</li>
-        <li>详情页13</li>
-        <li>详情页14</li>
-        <li>详情页15</li>
-        <li>详情页16</li>
-        <li>详情页17</li>
-        <li>详情页18</li>
-        <li>详情页19</li>
-        <li>详情页20</li>
-        <li>详情页21</li>
-        <li>详情页22</li>
-        <li>详情页23</li>
-        <li>详情页24</li>
-        <li>详情页25</li>
-        <li>详情页26</li>
-        <li>详情页27</li>
-        <li>详情页28</li>
-        <li>详情页29</li>
-        <li>详情页30</li>
-        <li>详情页31</li>
-        <li>详情页32</li>
-        <li>详情页33</li>
-        <li>详情页34</li>
-        <li>详情页35</li>
-        <li>详情页36</li>
-        <li>详情页37</li>
-        <li>详情页38</li>
-        <li>详情页39</li>
-        <li>详情页40</li>
-        <li>详情页41</li>
-        <li>详情页42</li>
-        <li>详情页43</li>
-        <li>详情页44</li>
-        <li>详情页45</li>
-        <li>详情页46</li>
-        <li>详情页47</li>
-        <li>详情页48</li>
-        <li>详情页49</li>
-        <li>详情页50</li>
-      </ul>
+      <detail-param-info
+        ref="paramz"
+        :param-info="paramInfo"
+      ></detail-param-info>
+      <detail-comment-info
+        ref="comment"
+        :comment-info="commentInfo"
+      ></detail-comment-info>
+      <goods-list ref="recommed" :goodslist="recommmeds"></goods-list>
     </scroll>
+    <detail-bottom-bar @addShopCart="addShopCart"></detail-bottom-bar>
+    <back-top @click.native="backTop" v-show="isShowTop"></back-top>
   </div>
 </template>
 <script>
@@ -72,10 +39,21 @@ import DetailsBaseInfo from "./childComps/DetailBaseInfo";
 import DetailsShopInfo from "./childComps/DetailShopInfo";
 import DetailGoodsInfo from "./childComps/DetailGoodsInfo";
 import DetailParamInfo from "./childComps/DetailParamInfo";
+import DetailCommentInfo from "./childComps/DetailCommentInfo";
+import DetailBottomBar from "./childComps/DetailBottomBar";
 
 import Scroll from "../../components/common/scroll/Scroll";
+import GoodsList from "../../components/content/goods/GoodsList";
+import { debounce } from "common/untils.js";
+import BackTop from "components/common/backTop/BackTop";
 
-import { getDetails, Goods, Shop, GoodsParam } from "network/details";
+import {
+  getDetails,
+  Goods,
+  Shop,
+  GoodsParam,
+  getRecommend
+} from "network/details";
 export default {
   name: "Details",
   data() {
@@ -85,7 +63,13 @@ export default {
       goods: {},
       shop: {},
       detailInfo: {},
-      paramInfo: {}
+      paramInfo: {},
+      commentInfo: {},
+      recommmeds: [],
+      themeTopYs: [],
+      getThemeTopYs: null,
+      currentIndex: 0,
+      isShowTop: false
     };
   },
   components: {
@@ -95,20 +79,19 @@ export default {
     DetailsShopInfo,
     DetailGoodsInfo,
     DetailParamInfo,
+    DetailCommentInfo,
+    DetailBottomBar,
 
-    Scroll
+    Scroll,
+    GoodsList,
+    BackTop
   },
-  methods: {
-    imageLoad() {
-      this.$refs.scroll.refresh();
-    }
-  },
+
   created() {
     // 1.保存存入的id
     this.iid = this.$route.params.iid;
-
     getDetails(this.iid).then(res => {
-      console.log(res);
+      // console.log(res);
       // 2.请求轮播图的图片信息
       const data = res.result;
       this.topImages = data.itemInfo.topImages;
@@ -127,7 +110,79 @@ export default {
         data.itemParams.info,
         data.itemParams.rule
       );
+      // 7.获取评论信息
+      if (data.rate.cRate != 0) {
+        this.commentInfo = data.rate.list[0];
+      }
     });
+    getRecommend().then(res => {
+      // console.log(res);
+      this.recommmeds = res.data.list;
+    });
+  },
+  mounted() {
+    let refresh = debounce(this.$refs.scroll.refresh, 200);
+    this.$bus.$on("detailsItemImageLoad", () => {
+      refresh();
+    });
+  },
+  methods: {
+    imageLoad() {
+      this.$refs.scroll.refresh();
+      this.themeTopYs = [];
+      this.themeTopYs.push(0);
+      this.themeTopYs.push(this.$refs.paramz.$el.offsetTop - 44);
+      this.themeTopYs.push(this.$refs.comment.$el.offsetTop - 44);
+      this.themeTopYs.push(this.$refs.recommed.$el.offsetTop - 44);
+
+      // console.log(this.themeTopYs);
+    },
+    detailTitleClick(index) {
+      this.$refs.scroll.scrollTo(0, -this.themeTopYs[index], 100);
+    },
+    contentScroll(position) {
+      this.isShowTop = position.y < -1000;
+
+      let positionY = -position.y;
+      const length = this.themeTopYs.length;
+      for (let i = 0; i < length; i++) {
+        if (
+          this.currentIndex != i &&
+          ((i < length - 1 &&
+            positionY >= this.themeTopYs[parseInt(i)] &&
+            positionY < this.themeTopYs[parseInt(i) + 1]) ||
+            (i === length - 1 && positionY >= this.themeTopYs[parseInt(i)]))
+        ) {
+          this.currentIndex = i;
+          this.$refs.nav.curretIndex = this.currentIndex;
+        }
+      }
+    },
+    backTop() {
+      console.log("backTop");
+      this.$refs.scroll.scrollTo(0, 0);
+    },
+    addShopCart() {
+      const production = {};
+
+      production.iid = this.iid;
+      production.image = this.topImages[0];
+      production.title = this.goods.title;
+      production.desc = this.goods.desc;
+      production.realPrice = this.goods.realPrice;
+      // console.log(production);
+      // console.log(this.goods);
+      this.$store.dispatch("addCart", production).then(res => {
+        // this.show = true;
+        // this.message = res;
+
+        // setTimeout(() => {
+        //   this.show = false;
+        // }, 2000);
+        console.log(this.$toast.show);
+        this.$toast.show(res, 2000);
+      });
+    }
   }
 };
 </script>
@@ -145,6 +200,7 @@ export default {
   background-color: #fff;
 }
 .content {
-  height: calc(100% - 44px);
+  height: calc(100% - 44px - 49px);
+  overflow: hidden;
 }
 </style>

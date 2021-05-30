@@ -1,6 +1,6 @@
 <template>
   <div class="goods-list-item" @click="goodsListItemClick">
-    <img :src="goodsitem.show.img" alt="" @load="imgOnLoad" />
+    <img v-lazy="isShowImage" alt="" @load="imgOnLoad" />
     <div class="goods-info">
       <p>{{ goodsitem.title }}</p>
       <span class="price">{{ goodsitem.price }}</span>
@@ -22,10 +22,23 @@ export default {
   },
   methods: {
     imgOnLoad() {
-      this.$bus.$emit("itemImageLoad");
+      if (this.$route.path == "/home") {
+        this.$bus.$emit("homeItemImageLoad");
+      } else if (this.$route.path == "/details") {
+        this.$bus.$emit("detailsItemImageLoad");
+      } else if (this.$route.path == "/category") {
+        this.$bus.$emit("categoryItemImageLoad");
+      }
     },
     goodsListItemClick() {
       this.$router.push("/details/" + this.goodsitem.iid);
+    }
+  },
+  computed: {
+    isShowImage() {
+      return (
+        this.goodsitem.img || this.goodsitem.image || this.goodsitem.show.img
+      );
     }
   }
 };
